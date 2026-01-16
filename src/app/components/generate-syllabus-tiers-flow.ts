@@ -14,7 +14,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import type {MediaPart} from 'genkit/model';
 
 const GenerateSyllabusTiersInputSchema = z.object({
   exam_type: z.enum(['Internal', 'Semester']).describe('The type of exam.'),
@@ -51,6 +50,25 @@ export async function generateSyllabusTiers(input: GenerateSyllabusTiersInput): 
   return generateSyllabusTiersFlow(input);
 }
 
+const generateSyllabusTiersPrompt = ai.definePrompt({
+  name: 'generateSyllabusTiersPrompt',
+  input: {schema: GenerateSyllabusTiersInputSchema},
+  output: {schema: GenerateSyllabusTiersOutputSchema},
+  tools: [],
+  prompt: `You are an AI assistant designed to help engineering students compress a large syllabus into priority-based study tiers, optimizing for exam scores under limited time.
+
+You will receive the syllabus details, exam type, and available study time. Your task is to analyze the syllabus and prioritize topics into tiered study levels (Tier 1, Tier 2, Tier 3) based on importance, prerequisites, and exam-heavy topics.
+Apply the Pareto principle (80/20 rule) to identify the most important topics.
+
+Output a JSON object with the tiered topics, overall recommendations, risk analysis, and quick revision notes. No markdown, no explanations, no extra text.
+
+Syllabus Text: {{syllabus_text}}
+Syllabus File: {{#if file}}{{media url=file}}{{else}}No file provided{{/if}}
+Exam Type: {{exam_type}}
+Available Study Time: {{time_value}} {{time_unit}}
+`,
+});
+
 const generateSyllabusTiersFlow = ai.defineFlow(
   {
     name: 'generateSyllabusTiersFlow',
@@ -58,38 +76,7 @@ const generateSyllabusTiersFlow = ai.defineFlow(
     outputSchema: GenerateSyllabusTiersOutputSchema,
   },
   async input => {
-    const systemPrompt = `You are an AI assistant designed to help engineering students compress a large syllabus into priority-based study tiers, optimizing for exam scores under limited time.
-
-You will receive the syllabus details, exam type, and available study time. Your task is to analyze the syllabus and prioritize topics into tiered study levels (Tier 1, Tier 2, Tier 3) based on importance, prerequisites, and exam-heavy topics.
-Apply the Pareto principle (80/20 rule) to identify the most important topics.
-
-Output a JSON object with the tiered topics, overall recommendations, risk analysis, and quick revision notes. No markdown, no explanations, no extra text.`;
-
-    const promptParts: (string | MediaPart)[] = [];
-    
-    let userMessage = `Please generate a study plan with the following details:
-Exam Type: ${input.exam_type}
-Available Study Time: ${input.time_value} ${input.time_unit}
-`;
-    if (input.syllabus_text) {
-        userMessage += `\nSyllabus Text: ${input.syllabus_text}`;
-    }
-    
-    promptParts.push({text: userMessage});
-
-    if (input.file) {
-        promptParts.push({text: `\nSyllabus File: See attached file.`});
-        promptParts.push({media: {url: input.file}});
-    }
-    
-    const {output} = await ai.generate({
-      system: systemPrompt,
-      prompt: promptParts,
-      output: {
-        schema: GenerateSyllabusTiersOutputSchema,
-      },
-      tools: [],
-    });
+    const {output} = await generateSyllabusTiersPrompt(input);
     return output!;
   }
 );
