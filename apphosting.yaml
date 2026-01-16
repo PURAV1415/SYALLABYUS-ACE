@@ -1,6 +1,17 @@
 # Settings to manage and configure a Firebase App Hosting backend.
 # https://firebase.google.com/docs/app-hosting/configure
 
+# The command that builds your application.
+# This is often your package.json's "build" script.
+build:
+  command: 'npm run build'
+
+# The command that starts your application.
+# This is often your package.json's "start" script.
+# The PORT environment variable will be automatically set.
+run:
+  command: 'npm run start'
+
 runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.

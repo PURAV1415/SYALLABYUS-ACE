@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 
 interface ResultsDisplayProps {
   result: GenerateSyllabusTiersOutput;
@@ -204,11 +204,11 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
                   <>
                     <Flashcard card={flashcards[flashcardIndex]} />
                     <div className="flex items-center justify-between">
-                       <Button variant="outline" onClick={prevCard}>Previous</Button>
+                       <Button type="button" variant="outline" onClick={prevCard}>Previous</Button>
                        <span className="text-sm text-muted-foreground">
                         Card {flashcardIndex + 1} of {flashcards.length}
                        </span>
-                       <Button variant="outline" onClick={nextCard}>Next</Button>
+                       <Button type="button" variant="outline" onClick={nextCard}>Next</Button>
                     </div>
                   </>
                 ) : (
