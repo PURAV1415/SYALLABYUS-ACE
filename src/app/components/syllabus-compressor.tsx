@@ -1,13 +1,53 @@
 'use client';
 
 import { useEffect, useRef, useActionState } from 'react';
+import dynamic from 'next/dynamic';
 import { useToast } from '@/hooks/use-toast';
 import { compressSyllabusAction, type FormState } from '@/app/actions';
-import FormFields from './form-fields';
 import SubmitButton from './submit-button';
 import ResultsPanel from './results-panel';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const initialState: FormState = { data: null, error: null };
+
+function FormSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="space-y-2">
+        <Skeleton className="h-5 w-1/4" />
+        <Skeleton className="h-[150px] w-full" />
+      </div>
+
+      <div className="space-y-2">
+        <Skeleton className="h-5 w-1/3" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const FormFields = dynamic(() => import('./form-fields'), {
+  ssr: false,
+  loading: () => <FormSkeleton />,
+});
+
 
 export default function SyllabusCompressor() {
   const { toast } = useToast();
