@@ -8,6 +8,7 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/compo
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
 import {firebaseApp} from '@/lib/firebase/client';
+import {firebaseConfig} from '@/lib/firebase/config';
 import Link from 'next/link';
 import {useToast} from '@/hooks/use-toast';
 import {Loader2} from 'lucide-react';
@@ -23,6 +24,19 @@ export default function SignupPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    if (firebaseConfig.apiKey === 'YOUR_API_KEY') {
+      toast({
+        variant: 'destructive',
+        title: 'Firebase Not Configured',
+        description:
+          'Please add your Firebase project configuration to src/lib/firebase/config.ts before signing up.',
+        duration: 5000,
+      });
+      setLoading(false);
+      return;
+    }
+
     const auth = getAuth(firebaseApp);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -30,12 +44,17 @@ export default function SignupPage() {
 
       const idToken = await userCredential.user.getIdToken();
 
-      await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${idToken}`,
         },
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Session creation failed.');
+      }
 
       router.push('/dashboard');
     } catch (error: any) {

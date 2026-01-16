@@ -26,8 +26,11 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({status: 'success', uid: decodedToken.uid});
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error verifying ID token:', error);
+    if (error.message?.includes('Firebase Admin SDK credentials are not set')) {
+      return NextResponse.json({ error: 'Authentication service is not configured on the server.' }, { status: 500 });
+    }
     return NextResponse.json({error: 'Unauthorized'}, {status: 401});
   }
 }
