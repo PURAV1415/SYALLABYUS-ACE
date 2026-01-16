@@ -16,7 +16,7 @@ npm run dev
 npm run genkit:dev
 ```
 
-Once both are running, open [http://localhost:9002](http://localhost:9002) in your browser to see the application.
+Once both are running, open [http://localhost:9003](http://localhost:9003) in your browser to see the application.
 
 ## Getting Started with Editing
 
