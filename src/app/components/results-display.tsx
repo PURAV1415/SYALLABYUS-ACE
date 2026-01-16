@@ -5,12 +5,14 @@ import type { GenerateSyllabusTiersOutput } from '@/ai/flows/generate-syllabus-t
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Medal, ShieldAlert, NotebookText, Award, ClipboardList, CheckSquare } from 'lucide-react';
+import { Medal, ShieldAlert, NotebookText, Award, ClipboardList, CheckSquare, Layers, RotateCw } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { Button } from '../ui/button';
 
 interface ResultsDisplayProps {
   result: GenerateSyllabusTiersOutput;
@@ -36,6 +38,35 @@ const tierConfig = {
 
 type TierKey = keyof typeof tierConfig;
 
+function Flashcard({ card }: { card: { question: string; answer: string } }) {
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  return (
+    <div className="[perspective:1000px] w-full h-48" onClick={() => setIsFlipped(!isFlipped)}>
+      <div
+        className={cn(
+          'relative h-full w-full rounded-xl shadow-md transition-transform duration-500 [transform-style:preserve-3d]',
+          isFlipped && '[transform:rotateY(180deg)]'
+        )}
+      >
+        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-card p-4 text-center [backface-visibility:hidden]">
+          <div>
+            <p className="text-sm text-muted-foreground">Question</p>
+            <p className="font-semibold text-lg">{card.question}</p>
+          </div>
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-accent/20 p-4 text-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
+           <div>
+            <p className="text-sm text-muted-foreground">Answer</p>
+            <p className="font-semibold text-lg">{card.answer}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function ResultsDisplay({ result }: ResultsDisplayProps) {
   const tiers = (Object.keys(tierConfig) as TierKey[]).filter(
     tier => result[tier] && (result[tier] as string[]).length > 0
@@ -45,10 +76,12 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
   const [checkedState, setCheckedState] = useState<Record<string, boolean>>({});
   const [progress, setProgress] = useState(0);
   const checklistItems = result.hourly_checklist || [];
+  const [flashcardIndex, setFlashcardIndex] = useState(0);
 
   useEffect(() => {
     setCheckedState({});
     setProgress(0);
+    setFlashcardIndex(0);
   }, [result]);
 
   const handleCheckboxChange = (id: string) => {
@@ -64,6 +97,17 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
       setProgress((completedItems / totalItems) * 100);
     }
   };
+  
+  const flashcards = result.flashcards || [];
+
+  const nextCard = () => {
+    setFlashcardIndex(prev => (prev + 1) % flashcards.length);
+  };
+
+  const prevCard = () => {
+    setFlashcardIndex(prev => (prev - 1 + flashcards.length) % flashcards.length);
+  };
+
 
   return (
     <ScrollArea className="h-full">
@@ -79,9 +123,10 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
         )}
 
         <Tabs defaultValue="syllabus" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="syllabus">Syllabus Tiers</TabsTrigger>
             <TabsTrigger value="checklist">Checklist</TabsTrigger>
+            <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
             <TabsTrigger value="risk">Risk Analysis</TabsTrigger>
             <TabsTrigger value="revision">Quick Revision</TabsTrigger>
           </TabsList>
@@ -141,6 +186,34 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
                     </div>
                   );
                 })}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="flashcards" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 font-headline">
+                  <Layers className="h-6 w-6 text-primary" />
+                  Flashcards
+                </CardTitle>
+                <CardDescription>Click a card to flip it. Use the buttons to navigate.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {flashcards.length > 0 ? (
+                  <>
+                    <Flashcard card={flashcards[flashcardIndex]} />
+                    <div className="flex items-center justify-between">
+                       <Button variant="outline" onClick={prevCard}>Previous</Button>
+                       <span className="text-sm text-muted-foreground">
+                        Card {flashcardIndex + 1} of {flashcards.length}
+                       </span>
+                       <Button variant="outline" onClick={nextCard}>Next</Button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground text-center">No flashcards generated.</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

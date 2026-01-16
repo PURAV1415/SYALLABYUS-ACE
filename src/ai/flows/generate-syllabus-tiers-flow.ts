@@ -33,6 +33,12 @@ const ChecklistItemSchema = z.object({
     topic: z.string().describe('The specific topic or task to focus on during this time slot.'),
 });
 
+const FlashcardSchema = z.object({
+  question: z.string().describe('The question for the flashcard.'),
+  answer: z.string().describe('The answer to the flashcard question.'),
+});
+
+
 const GenerateSyllabusTiersOutputSchema = z.object({
   tier1: z.array(z.string()).describe('List of topics for Tier 1 study.'),
   tier2: z.array(z.string()).describe('List of topics for Tier 2 study.'),
@@ -49,6 +55,7 @@ const GenerateSyllabusTiersOutputSchema = z.object({
     'Tier 3': z.string().optional().describe("Quick revision notes for Tier 3 topics."),
   }).describe('Quick revision notes for each tier.'),
   hourly_checklist: z.array(ChecklistItemSchema).describe('A detailed hour-by-hour or day-by-day study checklist based on the provided time.'),
+  flashcards: z.array(FlashcardSchema).describe('A list of flashcards with questions and answers for active recall.'),
 }).describe('Tiered study lists with risk analysis and recommendations.');
 
 export type GenerateSyllabusTiersOutput = z.infer<typeof GenerateSyllabusTiersOutputSchema>;
@@ -71,7 +78,9 @@ Apply the Pareto principle (80/20 rule) to identify the most important topics.
 
 Additionally, you must create a detailed, time-based study checklist ('hourly_checklist') that breaks down the study plan into specific time slots based on the user's available time. For example, if the user has 8 hours, create checklist items for "Hour 1", "Hour 2", etc. If they have 7 days, create items for "Day 1", "Day 2", etc.
 
-Output a JSON object with the tiered topics, overall recommendations, risk analysis, quick revision notes, and the detailed study checklist. No markdown, no explanations, no extra text.`;
+Finally, generate a set of flashcards with questions and answers based on the most important topics (Tier 1 and Tier 2) to help with active recall.
+
+Output a JSON object with the tiered topics, overall recommendations, risk analysis, quick revision notes, the detailed study checklist, and the flashcards. No markdown, no explanations, no extra text.`;
 
     const promptParts: (string | MediaPart)[] = [];
     
