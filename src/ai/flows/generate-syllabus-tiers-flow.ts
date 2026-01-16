@@ -54,6 +54,7 @@ const generateSyllabusTiersPrompt = ai.definePrompt({
   name: 'generateSyllabusTiersPrompt',
   input: {schema: GenerateSyllabusTiersInputSchema},
   output: {schema: GenerateSyllabusTiersOutputSchema},
+  tools: [],
   prompt: `You are an AI assistant designed to help engineering students compress a large syllabus into priority-based study tiers, optimizing for exam scores under limited time.
 
 You will receive the syllabus details, exam type, and available study time. Your task is to analyze the syllabus and prioritize topics into tiered study levels (Tier 1, Tier 2, Tier 3) based on importance, prerequisites, and exam-heavy topics.
