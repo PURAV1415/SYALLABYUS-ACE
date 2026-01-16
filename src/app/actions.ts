@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -63,7 +62,12 @@ export async function compressSyllabusAction(
     return { data: result, error: null };
   } catch (e) {
     console.error(e);
-    const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
-    return { data: null, error: `An unexpected error occurred: ${errorMessage}` };
+    let errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
+    if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('quota')) {
+        errorMessage = 'You have exceeded the free API usage limit. Please check your plan on the Google AI platform or try again later.';
+    } else {
+        errorMessage = `An unexpected error occurred. Please try again.`;
+    }
+    return { data: null, error: errorMessage };
   }
 }
