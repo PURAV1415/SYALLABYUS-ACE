@@ -28,6 +28,11 @@ const GenerateSyllabusTiersInputSchema = z.object({
 
 export type GenerateSyllabusTiersInput = z.infer<typeof GenerateSyllabusTiersInputSchema>;
 
+const ChecklistItemSchema = z.object({
+    time_slot: z.string().describe('A specific time slot for studying (e.g., "Hour 1-2", "Day 1: 9am-11am").'),
+    topic: z.string().describe('The specific topic or task to focus on during this time slot.'),
+});
+
 const GenerateSyllabusTiersOutputSchema = z.object({
   tier1: z.array(z.string()).describe('List of topics for Tier 1 study.'),
   tier2: z.array(z.string()).describe('List of topics for Tier 2 study.'),
@@ -43,6 +48,7 @@ const GenerateSyllabusTiersOutputSchema = z.object({
     'Tier 2': z.string().optional().describe("Quick revision notes for Tier 2 topics."),
     'Tier 3': z.string().optional().describe("Quick revision notes for Tier 3 topics."),
   }).describe('Quick revision notes for each tier.'),
+  hourly_checklist: z.array(ChecklistItemSchema).describe('A detailed hour-by-hour or day-by-day study checklist based on the provided time.'),
 }).describe('Tiered study lists with risk analysis and recommendations.');
 
 export type GenerateSyllabusTiersOutput = z.infer<typeof GenerateSyllabusTiersOutputSchema>;
@@ -63,7 +69,9 @@ const generateSyllabusTiersFlow = ai.defineFlow(
 You will receive the syllabus details, exam type, and available study time. Your task is to analyze the syllabus and prioritize topics into tiered study levels (Tier 1, Tier 2, Tier 3) based on importance, prerequisites, and exam-heavy topics.
 Apply the Pareto principle (80/20 rule) to identify the most important topics.
 
-Output a JSON object with the tiered topics, overall recommendations, risk analysis, and quick revision notes. No markdown, no explanations, no extra text.`;
+Additionally, you must create a detailed, time-based study checklist ('hourly_checklist') that breaks down the study plan into specific time slots based on the user's available time. For example, if the user has 8 hours, create checklist items for "Hour 1", "Hour 2", etc. If they have 7 days, create items for "Day 1", "Day 2", etc.
+
+Output a JSON object with the tiered topics, overall recommendations, risk analysis, quick revision notes, and the detailed study checklist. No markdown, no explanations, no extra text.`;
 
     const promptParts: (string | MediaPart)[] = [];
     
@@ -88,7 +96,6 @@ Available Study Time: ${input.time_value} ${input.time_unit}
       output: {
         schema: GenerateSyllabusTiersOutputSchema,
       },
-      tools: [],
     });
     return output!;
   }

@@ -1,10 +1,16 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import type { GenerateSyllabusTiersOutput } from '@/ai/flows/generate-syllabus-tiers-flow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Medal, ShieldAlert, NotebookText, Award, ClipboardList } from 'lucide-react';
+import { Medal, ShieldAlert, NotebookText, Award, ClipboardList, CheckSquare } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 interface ResultsDisplayProps {
   result: GenerateSyllabusTiersOutput;
@@ -36,12 +42,46 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
   );
   const firstTier = tiers.length > 0 ? tiers[0] : undefined;
 
+  const [checkedState, setCheckedState] = useState<Record<string, boolean>>({});
+  const [progress, setProgress] = useState(0);
+  const checklistItems = result.hourly_checklist || [];
+
+  useEffect(() => {
+    setCheckedState({});
+    setProgress(0);
+  }, [result]);
+
+  const handleCheckboxChange = (id: string) => {
+    const newCheckedState = {
+      ...checkedState,
+      [id]: !checkedState[id],
+    };
+    setCheckedState(newCheckedState);
+
+    const totalItems = checklistItems.length;
+    if (totalItems > 0) {
+      const completedItems = Object.values(newCheckedState).filter(Boolean).length;
+      setProgress((completedItems / totalItems) * 100);
+    }
+  };
+
   return (
     <ScrollArea className="h-full">
       <div className="pr-4">
+        {checklistItems.length > 0 && (
+          <div className="mb-6">
+            <Label className="text-lg font-headline">Your Progress</Label>
+            <div className="flex items-center gap-4 mt-2">
+              <Progress value={progress} className="w-full" />
+              <span className="text-lg font-bold text-primary">{Math.round(progress)}%</span>
+            </div>
+          </div>
+        )}
+
         <Tabs defaultValue="syllabus" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="syllabus">Syllabus Tiers</TabsTrigger>
+            <TabsTrigger value="checklist">Checklist</TabsTrigger>
             <TabsTrigger value="risk">Risk Analysis</TabsTrigger>
             <TabsTrigger value="revision">Quick Revision</TabsTrigger>
           </TabsList>
@@ -70,6 +110,39 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
                 );
               })}
             </Accordion>
+          </TabsContent>
+
+          <TabsContent value="checklist" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 font-headline">
+                  <CheckSquare className="h-6 w-6 text-primary" />
+                  Study Checklist
+                </CardTitle>
+                <CardDescription>
+                  Follow this plan and check off items as you complete them.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {checklistItems.map((item, index) => {
+                  const id = `checklist-${index}`;
+                  return (
+                    <div key={id} className={`flex items-center space-x-3 p-3 rounded-md transition-colors ${checkedState[id] ? 'bg-accent/10' : 'bg-card'}`}>
+                      <Checkbox
+                        id={id}
+                        checked={!!checkedState[id]}
+                        onCheckedChange={() => handleCheckboxChange(id)}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label htmlFor={id} className={`font-medium cursor-pointer ${checkedState[id] ? 'line-through text-muted-foreground' : ''}`}>
+                          <span className="font-bold">{item.time_slot}:</span> {item.topic}
+                        </Label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="risk" className="mt-4">
