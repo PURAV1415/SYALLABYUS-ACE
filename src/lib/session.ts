@@ -1,8 +1,4 @@
-import {getAuth} from 'firebase-admin/auth';
 import {cookies} from 'next/headers';
-import {initServerApp} from './firebase/server';
-
-initServerApp();
 
 interface SessionUser {
   uid: string;
@@ -24,6 +20,11 @@ export async function getSession(): Promise<Session | null> {
   }
 
   try {
+    const {initServerApp} = await import('./firebase/server');
+    const {getAuth} = await import('firebase-admin/auth');
+
+    await initServerApp();
+    
     const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true);
     return {
       user: {
@@ -37,6 +38,8 @@ export async function getSession(): Promise<Session | null> {
     };
   } catch (error) {
     console.warn('Could not verify session cookie:', error);
+    // If the cookie is invalid, delete it.
+    cookies().delete('session');
     return null;
   }
 }

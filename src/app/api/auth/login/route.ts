@@ -1,9 +1,5 @@
 import {NextResponse} from 'next/server';
-import {getAuth} from 'firebase-admin/auth';
-import {initServerApp} from '@/lib/firebase/server';
 import {cookies} from 'next/headers';
-
-initServerApp();
 
 export async function POST(request: Request) {
   const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
@@ -13,6 +9,11 @@ export async function POST(request: Request) {
   }
 
   try {
+    const {initServerApp} = await import('@/lib/firebase/server');
+    const {getAuth} = await import('firebase-admin/auth');
+
+    await initServerApp();
+    
     const decodedToken = await getAuth().verifyIdToken(idToken);
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
     const sessionCookie = await getAuth().createSessionCookie(idToken, {expiresIn});
