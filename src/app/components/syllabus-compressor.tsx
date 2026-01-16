@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { useFormState } from 'react-dom';
+import { useEffect, useRef, useActionState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { compressSyllabusAction, type FormState } from '@/app/actions';
 import FormFields from './form-fields';
@@ -12,7 +11,7 @@ const initialState: FormState = { data: null, error: null };
 
 export default function SyllabusCompressor() {
   const { toast } = useToast();
-  const [state, formAction] = useFormState(compressSyllabusAction, initialState);
+  const [state, formAction] = useActionState(compressSyllabusAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const hasShownSuccessToast = useRef(false);
 
