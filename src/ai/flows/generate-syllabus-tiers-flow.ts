@@ -37,7 +37,11 @@ const GenerateSyllabusTiersOutputSchema = z.object({
     high_risk_if_skipped: z.array(z.string()).describe('List of high-risk topics if skipped.'),
     notes: z.string().describe('Additional notes on risk analysis.'),
   }).describe('Risk analysis of the syllabus.'),
-  quick_revision: z.record(z.string()).describe('Quick revision notes for each tier.'),
+  quick_revision: z.object({
+    'Tier 1': z.string().optional().describe("Quick revision notes for Tier 1 topics."),
+    'Tier 2': z.string().optional().describe("Quick revision notes for Tier 2 topics."),
+    'Tier 3': z.string().optional().describe("Quick revision notes for Tier 3 topics."),
+  }).describe('Quick revision notes for each tier.'),
 }).describe('Tiered study lists with risk analysis and recommendations.');
 
 export type GenerateSyllabusTiersOutput = z.infer<typeof GenerateSyllabusTiersOutputSchema>;
@@ -61,20 +65,6 @@ Syllabus Text: {{syllabus_text}}
 Syllabus File: {{#if file}}{{media url=file}}{{else}}No file provided{{/if}}
 Exam Type: {{exam_type}}
 Available Study Time: {{time_value}} {{time_unit}}
-
-Output STRICT JSON ONLY formatted as:
-\{
-  "tier1": [],
-  "tier2": [],
-  "tier3": [],
-  "recommendation": "",
-  "risk_analysis": \{
-    "overall_risk": "",
-    "high_risk_if_skipped": [],
-    "notes": ""
-  \},
-  "quick_revision": {},
-}
 `,
 });
 
