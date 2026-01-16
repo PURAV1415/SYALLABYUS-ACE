@@ -1,17 +1,17 @@
 import {NextResponse, type NextRequest} from 'next/server';
-import {updateSession} from '@/lib/session';
 
 const PROTECTED_ROUTES = ['/dashboard'];
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const {pathname} = request.nextUrl;
+  const sessionCookie = request.cookies.get('session')?.value;
 
   const isProtectedRoute = PROTECTED_ROUTES.some(route =>
     pathname.startsWith(route)
   );
 
-  if (isProtectedRoute) {
-    return await updateSession(request);
+  if (isProtectedRoute && !sessionCookie) {
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   return NextResponse.next();
