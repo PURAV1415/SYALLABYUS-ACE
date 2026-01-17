@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { GenerateSyllabusTiersOutput } from '@/ai/flows/generate-syllabus-tiers-flow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Medal, ShieldAlert, NotebookText, Award, ClipboardList, CheckSquare, Layers, RotateCw } from 'lucide-react';
+import { Medal, ShieldAlert, NotebookText, Award, ClipboardList, CheckSquare, Layers, RotateCw, Download } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -13,6 +13,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface ResultsDisplayProps {
   result: GenerateSyllabusTiersOutput;
@@ -73,10 +75,13 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
   );
   const firstTier = tiers.length > 0 ? tiers[0] : undefined;
 
+  const [activeTab, setActiveTab] = useState('syllabus');
   const [checkedState, setCheckedState] = useState<Record<string, boolean>>({});
   const [progress, setProgress] = useState(0);
   const checklistItems = result.hourly_checklist || [];
   const [flashcardIndex, setFlashcardIndex] = useState(0);
+
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCheckedState({});
@@ -108,21 +113,63 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
     setFlashcardIndex(prev => (prev - 1 + flashcards.length) % flashcards.length);
   };
 
+  const handleDownload = () => {
+    const input = contentRef.current;
+    if (input) {
+      html2canvas(input, {
+        onclone: (document) => {
+            // Find all accordion triggers
+            const triggers = document.querySelectorAll('[data-state="closed"]');
+            // For each closed accordion, find its content and set display to none
+            triggers.forEach((trigger) => {
+                const contentId = trigger.getAttribute('aria-controls');
+                if (contentId) {
+                    const content = document.getElementById(contentId);
+                    if (content) {
+                        // We set it to display none because html2canvas will still render it
+                        // if it is in the DOM, even if its parent is closed.
+                        (content.style as any).display = 'none';
+                    }
+                }
+            });
+        }
+    }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const ratio = canvasWidth / canvasHeight;
+        const width = pdfWidth;
+        const height = width / ratio;
+
+        pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+        pdf.save("study-plan.pdf");
+      });
+    }
+  };
 
   return (
     <ScrollArea className="h-full">
-      <div className="pr-4">
-        {checklistItems.length > 0 && (
-          <div className="mb-6">
-            <Label className="text-lg font-headline">Your Progress</Label>
-            <div className="flex items-center gap-4 mt-2">
-              <Progress value={progress} className="w-full" />
-              <span className="text-lg font-bold text-primary">{Math.round(progress)}%</span>
+      <div className="pr-4" ref={contentRef}>
+        <div className="flex justify-between items-center mb-6">
+          {checklistItems.length > 0 && (
+            <div className="w-full">
+              <Label className="text-lg font-headline">Your Progress</Label>
+              <div className="flex items-center gap-4 mt-2">
+                <Progress value={progress} className="w-full" />
+                <span className="text-lg font-bold text-primary">{Math.round(progress)}%</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          <Button onClick={handleDownload} variant="outline" className="ml-auto">
+            <Download className="h-4 w-4 mr-2" />
+            Download PDF
+          </Button>
+        </div>
 
-        <Tabs defaultValue="syllabus" className="w-full">
+        <Tabs defaultValue="syllabus" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="syllabus">Syllabus Tiers</TabsTrigger>
             <TabsTrigger value="checklist">Checklist</TabsTrigger>
@@ -132,7 +179,7 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
           </TabsList>
           
           <TabsContent value="syllabus" className="mt-4">
-            <Accordion type="single" collapsible defaultValue={firstTier} className="w-full space-y-4">
+            <Accordion type="multiple" className="w-full space-y-4">
               {tiers.map(tier => {
                 const config = tierConfig[tier];
                 const topics = result[tier] as string[];
