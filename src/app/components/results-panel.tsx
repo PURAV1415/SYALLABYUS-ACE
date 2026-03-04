@@ -8,9 +8,10 @@ import Hero from './hero';
 
 interface ResultsPanelProps {
   result: GenerateSyllabusTiersOutput | null;
+  onShare?: () => void;
 }
 
-export default function ResultsPanel({ result }: ResultsPanelProps) {
+export default function ResultsPanel({ result, onShare }: ResultsPanelProps) {
   const { pending } = useFormStatus();
 
   if (pending) {
@@ -24,7 +25,7 @@ export default function ResultsPanel({ result }: ResultsPanelProps) {
   }
 
   if (result) {
-    return <ResultsDisplay result={result} />;
+    return <ResultsDisplay result={result} onShare={onShare} />;
   }
 
   return <Hero />;

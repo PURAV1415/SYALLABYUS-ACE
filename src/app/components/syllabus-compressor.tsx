@@ -7,8 +7,6 @@ import { compressSyllabusAction, type FormState } from '@/app/actions';
 import SubmitButton from './submit-button';
 import ResultsPanel from './results-panel';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Share2 } from 'lucide-react';
 
 const initialState: FormState = { data: null, error: null };
 
@@ -143,15 +141,7 @@ export default function SyllabusCompressor() {
           <SubmitButton />
         </div>
         <div className="relative rounded-xl border-2 border-dashed bg-card/50 min-h-[60vh] lg:min-h-0">
-          {state.data && (
-            <div className="absolute top-4 right-4 z-10">
-              <Button type="button" variant="outline" onClick={handleShare}>
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-            </div>
-          )}
-          <ResultsPanel result={state.data} />
+          <ResultsPanel result={state.data} onShare={handleShare} />
         </div>
       </div>
     </form>

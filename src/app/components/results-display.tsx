@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { GenerateSyllabusTiersOutput } from '@/ai/flows/generate-syllabus-tiers-flow';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Medal, ShieldAlert, NotebookText, Award, ClipboardList, CheckSquare, Layers, RotateCw, Download } from 'lucide-react';
+import { Medal, ShieldAlert, NotebookText, Award, ClipboardList, CheckSquare, Layers, RotateCw, Download, Share2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -14,10 +14,10 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface ResultsDisplayProps {
   result: GenerateSyllabusTiersOutput;
+  onShare?: () => void;
 }
 
 const tierConfig = {
@@ -69,7 +69,7 @@ function Flashcard({ card }: { card: { question: string; answer: string } }) {
 }
 
 
-export default function ResultsDisplay({ result }: ResultsDisplayProps) {
+export default function ResultsDisplay({ result, onShare }: ResultsDisplayProps) {
   const tiers = (Object.keys(tierConfig) as TierKey[]).filter(
     tier => result[tier] && (result[tier] as string[]).length > 0
   );
@@ -81,13 +81,12 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
   const checklistItems = result.hourly_checklist || [];
   const [flashcardIndex, setFlashcardIndex] = useState(0);
 
-  const contentRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    setCheckedState({});
-    setProgress(0);
-    setFlashcardIndex(0);
-  }, [result]);
+    // Only reset on first load, preserve state on subsequent renders
+    if (Object.keys(checkedState).length === 0 && progress === 0) {
+      setFlashcardIndex(0);
+    }
+  }, []);
 
   const handleCheckboxChange = (id: string) => {
     const newCheckedState = {
@@ -113,60 +112,137 @@ export default function ResultsDisplay({ result }: ResultsDisplayProps) {
     setFlashcardIndex(prev => (prev - 1 + flashcards.length) % flashcards.length);
   };
 
-  const handleDownload = () => {
-    const input = contentRef.current;
-    if (input) {
-      html2canvas(input, {
-        onclone: (document) => {
-            // Find all accordion triggers
-            const triggers = document.querySelectorAll('[data-state="closed"]');
-            // For each closed accordion, find its content and set display to none
-            triggers.forEach((trigger) => {
-                const contentId = trigger.getAttribute('aria-controls');
-                if (contentId) {
-                    const content = document.getElementById(contentId);
-                    if (content) {
-                        // We set it to display none because html2canvas will still render it
-                        // if it is in the DOM, even if its parent is closed.
-                        (content.style as any).display = 'none';
-                    }
-                }
-            });
+  const handleDownload = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    let yPosition = 10;
+    const lineHeight = 5;
+    const margin = 10;
+    
+    // Title
+    pdf.setFontSize(20);
+    pdf.text('Study Plan - SyllabusAce', margin, yPosition);
+    yPosition += 15;
+    
+    // Progress
+    if (checklistItems.length > 0) {
+      pdf.setFontSize(12);
+      pdf.text(`Study Progress: ${Math.round(progress)}%`, margin, yPosition);
+      yPosition += 8;
+    }
+    
+    // Syllabus Tiers
+    pdf.setFontSize(14);
+    pdf.text('Syllabus Tiers', margin, yPosition);
+    yPosition += 8;
+    
+    tiers.forEach(tier => {
+      const config = tierConfig[tier];
+      const topics = result[tier] as string[];
+      
+      pdf.setFontSize(12);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(config.title, margin + 5, yPosition);
+      yPosition += 6;
+      
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      topics.forEach((topic) => {
+        if (yPosition > pageHeight - margin) {
+          pdf.addPage();
+          yPosition = margin;
         }
-    }).then((canvas) => {
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-        const ratio = canvasWidth / canvasHeight;
-        const width = pdfWidth;
-        const height = width / ratio;
-
-        pdf.addImage(imgData, 'PNG', 0, 0, width, height);
-        pdf.save("study-plan.pdf");
+        const wrappedText = pdf.splitTextToSize(`• ${topic}`, pageWidth - margin * 2 - 5);
+        pdf.text(wrappedText, margin + 8, yPosition);
+        yPosition += wrappedText.length * lineHeight + 2;
+      });
+      yPosition += 3;
+    });
+    
+    // Checklist if exists
+    if (checklistItems.length > 0) {
+      if (yPosition > pageHeight - margin) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+      pdf.setFontSize(14);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Study Checklist', margin, yPosition);
+      yPosition += 8;
+      
+      pdf.setFontSize(10);
+      checklistItems.forEach((item) => {
+        if (yPosition > pageHeight - margin) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+        const status = checkedState[`checklist-${checklistItems.indexOf(item)}`] ? '✓' : '○';
+        const wrappedText = pdf.splitTextToSize(`${status} ${item.time_slot}: ${item.topic}`, pageWidth - margin * 2 - 8);
+        pdf.text(wrappedText, margin + 8, yPosition);
+        yPosition += wrappedText.length * lineHeight + 2;
+      });
+      yPosition += 3;
+    }
+    
+    // Risk Analysis
+    if (yPosition > pageHeight - margin) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+    pdf.setFontSize(14);
+    pdf.text('Risk Analysis', margin, yPosition);
+    yPosition += 8;
+    
+    pdf.setFontSize(10);
+    pdf.text(`Overall Risk: ${result.risk_analysis.overall_risk}`, margin + 5, yPosition);
+    yPosition += 6;
+    
+    if (result.risk_analysis.high_risk_if_skipped.length > 0) {
+      pdf.setFontSize(10);
+      pdf.text('High Risk Topics if Skipped:', margin + 5, yPosition);
+      yPosition += 6;
+      result.risk_analysis.high_risk_if_skipped.forEach((topic) => {
+        if (yPosition > pageHeight - margin) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+        const wrappedText = pdf.splitTextToSize(`• ${topic}`, pageWidth - margin * 2 - 10);
+        pdf.text(wrappedText, margin + 10, yPosition);
+        yPosition += wrappedText.length * lineHeight + 2;
       });
     }
+    
+    pdf.save("study-plan.pdf");
   };
 
   return (
     <ScrollArea className="h-full">
-      <div className="pr-4" ref={contentRef}>
-        <div className="flex justify-between items-center mb-6">
+      <div className="pr-4">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
           {checklistItems.length > 0 && (
-            <div className="w-full">
+            <div className="flex-1">
               <Label className="text-lg font-headline">Your Progress</Label>
               <div className="flex items-center gap-4 mt-2">
-                <Progress value={progress} className="w-full" />
-                <span className="text-lg font-bold text-primary">{Math.round(progress)}%</span>
+                <Progress value={progress} className="flex-1" />
+                <span className="text-lg font-bold text-primary whitespace-nowrap">{Math.round(progress)}%</span>
               </div>
             </div>
           )}
-          <Button onClick={handleDownload} variant="outline" className="ml-auto">
-            <Download className="h-4 w-4 mr-2" />
-            Download PDF
-          </Button>
+          <div className="flex gap-2 w-full md:w-auto">
+            <Button type="button" onClick={handleDownload} className="flex-1 md:flex-initial bg-green-600 hover:bg-green-700 text-white">
+              <Download className="h-4 w-4 mr-2" />
+              Download PDF
+            </Button>
+            {onShare && (
+              <Button type="button" onClick={onShare} variant="outline" className="flex-1 md:flex-initial border-blue-500 text-blue-600 hover:bg-blue-50">
+                <Share2 className="h-4 w-4 mr-2" />
+                Copy to Clipboard
+              </Button>
+            )}
+          </div>
         </div>
 
         <Tabs defaultValue="syllabus" className="w-full" onValueChange={setActiveTab}>
